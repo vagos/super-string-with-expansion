@@ -1,21 +1,16 @@
 import sys
 import itertools
 import math
-
+import random
 # Getting data from stdin
-
 class Parser:
-
     def __init__(self, file=None):
         self.cursor = self.parse()
         self.file = file
-
     def get_word(self):
         return next(self.cursor)
-
     def get_number(self):
         return int(self.get_word())
-
     def parse(self):
         if self.file:
             with open(self.file) as file:
@@ -25,77 +20,96 @@ class Parser:
                     for number in data:
                         if len(number) > 0:
                             yield(number)   
-
         else:
             while True:
                 data = list(input().split(' '))
                 for number in data:
-                    if len(number) > 0:
-                        yield(number)   
+                    yield(number)   
 
 def read_data():
     file = None
     if len(sys.argv) > 1:
         file = sys.argv[1]
-
     parser = Parser(file)
-
     expansions = {}
     strings = set()
-
     n = parser.get_number()
     string = parser.get_word()
-
     for i in range(n):
         s = parser.get_word()
+        # Invalid n value.
+        # We parsed some of the subsets before the strings were done.
+        if ':' in s: raise Exception("Invalid input")
         strings.add(s)
-
     while True:
         try:
             s = parser.get_word()
             l, rest = s.split(':')
-            expansions[l] = rest.split(',')
+            rest = rest.split(',')
+            # Empty r_j
+            if not all([r != '' for r in rest]): 
+                raise Exception("Invalid input")
+            expansions[l] = rest
         except:
             break
-
     return string, expansions, strings
 
 def is_expansion_valid(string, strings, expansion):
-
     def expand_string(string, expansion):
         for k in expansion:
             if k not in string: pass
             string = string.replace(k, expansion[k])
         return string
-
     for s in strings:
         s = expand_string(s, expansion)
         if not s in string: # Is s substring of string?
             return False
     return True
 
+def remove_invalid_choices(string, expansions, strings):
+    # Remove expansion of keys that do not appear into the target
+    letters = set()
+    for s in strings:
+        letters = letters.union(set(s))
+    for k in set(expansions.keys()):
+        if k not in letters:
+            del expansions[k]
+    # If a possible expansion in the expansions is not a substring of string, remove it 
+    for l in expansions:
+        for s in set(expansions[l]):
+            if s not in string:
+                expansions[l].remove(s)
 
 def run_brute_force(string, expansions, strings):
     keys, values = zip(*expansions.items())
-
     for v in itertools.product(*values):
         expansion = dict(zip(keys, v))
         
         if is_expansion_valid(string, strings, expansion):
             return expansion
-
     return None
 
-def print_answer(expansion):
+def print_answer(expansion, expansions):
+    for k in expansions.keys():
+        if k not in expansion:
+            expansion[k] = random.choice(expansions[k])
     for k,v in expansion.items():
         print(f"{k}:{v}")
 
 def main():
-    string, expansions, strings = read_data()
-    answer =  run_brute_force(string, expansions, strings)
-
+    random.seed(42)
+    try:
+        string, expansions, strings = read_data()
+        expansions_cpy = dict(expansions)
+    except:
+        answer = None
+    try:
+        remove_invalid_choices(string, expansions, strings)
+        answer =  run_brute_force(string, expansions, strings)
+    except:
+        answer = None
     if answer:
-        print_answer(answer)
+        print_answer(answer, expansions_cpy)
     else:
         print("NO")
 
