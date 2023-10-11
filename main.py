@@ -2,6 +2,7 @@ import sys
 import itertools
 import math
 import random
+from collections import defaultdict
 # Getting data from stdin
 class Parser:
     def __init__(self, file=None):
@@ -37,6 +38,9 @@ def read_data():
     strings = set()
     n = parser.get_number()
     string = parser.get_word()
+
+    if n <= 0: raise Exception("Invalid input")
+
     for i in range(n):
         s = parser.get_word()
         # Invalid n value.
@@ -49,7 +53,12 @@ def read_data():
 
         l, rest = s.split(':')
         rest = rest.split(',')
+        if l in expansions:
+            raise Exception("Invalid input")
+        if len(set(rest)) != len(rest):
+            raise Exception("Invalid input")
         expansions[l] = rest
+
     return string, expansions, strings
 
 def is_expansion_valid(string, strings, expansion):
@@ -90,23 +99,33 @@ def run_brute_force(string, expansions, strings):
 def print_answer(expansion, expansions):
     for k in expansions.keys():
         if k not in expansion:
-            expansion[k] = random.choice(expansions[k])
+            expansion[k] = random.choice(list(expansions[k]))
     for k,v in expansion.items():
         print(f"{k}:{v}")
 
 def main():
     random.seed(42)
+    expansions = None
+    string = None
+    strings = None
+    expansions_cpy = None
+
     try:
         string, expansions, strings = read_data()
         expansions_cpy = dict(expansions)
     except:
         answer = None
+
     try:
         remove_invalid_choices(string, expansions, strings)
         answer =  run_brute_force(string, expansions, strings)
     except:
         answer = None
-    if answer:
+    
+    if expansions == {}:
+        answer = {}
+
+    if answer is not None:
         print_answer(answer, expansions_cpy)
     else:
         print("NO")
