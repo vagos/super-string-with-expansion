@@ -8,9 +8,11 @@ class Parser:
         self.cursor = self.parse()
         self.file = file
     def get_word(self):
-        return next(self.cursor)
+        return next(self.cursor, None)
     def get_number(self):
-        return int(self.get_word())
+        n = self.get_word()
+        if n is None: return None
+        return int(n)
     def parse(self):
         if self.file:
             with open(self.file) as file:
@@ -21,8 +23,8 @@ class Parser:
                         if len(number) > 0:
                             yield(number)   
         else:
-            while True:
-                data = list(input().split(' '))
+            for line in sys.stdin:
+                data = [s.strip() for s in line.split(' ')]
                 for number in data:
                     yield(number)   
 
@@ -42,16 +44,12 @@ def read_data():
         if ':' in s: raise Exception("Invalid input")
         strings.add(s)
     while True:
-        try:
-            s = parser.get_word()
-            l, rest = s.split(':')
-            rest = rest.split(',')
-            # Empty r_j
-            if not all([r != '' for r in rest]): 
-                raise Exception("Invalid input")
-            expansions[l] = rest
-        except:
-            break
+        s = parser.get_word()
+        if s is None: break # Reached EOF
+
+        l, rest = s.split(':')
+        rest = rest.split(',')
+        expansions[l] = rest
     return string, expansions, strings
 
 def is_expansion_valid(string, strings, expansion):
