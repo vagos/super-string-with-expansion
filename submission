@@ -1,0 +1,10 @@
+#!/bin/bash
+
+# This script requires the zip and dragon-drop packages.
+
+FILENAME=submission-$(date +"%Y:%m:%H:%M").zip
+zip "$FILENAME" *.py
+
+echo "Created submission:" $FILENAME
+
+dragon-drop "$PWD/$FILENAME"
