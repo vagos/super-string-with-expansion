@@ -2,8 +2,9 @@ import sys
 import time
 import itertools
 import math
-import random
+import re
 from collections import defaultdict
+
 # Getting data from stdin
 class Parser:
     def __init__(self, file=None):
@@ -16,6 +17,7 @@ class Parser:
         if n is None: return None
         return int(n)
     def parse(self):
+
         if self.file:
             with open(self.file) as file:
                 lines = file.readlines()
@@ -40,7 +42,7 @@ def read_data():
     n = parser.get_number()
     string = parser.get_word()
 
-    if n <= 0: raise Exception("Invalid input")
+    if n < 0: raise Exception("Invalid input")
 
     for i in range(n):
         s = parser.get_word()
@@ -53,6 +55,8 @@ def read_data():
         if s is None: break # Reached EOF
 
         l, rest = s.split(':')
+        if l == '': raise Exception("Invalid input")
+
         rest = rest.split(',')
         if l in expansions:
             raise Exception("Invalid input")
@@ -63,12 +67,10 @@ def read_data():
     return string, expansions, strings
 
 def is_expansion_valid(string, strings, expansion):
-    def expand_string(string, expansion):
-        for k in expansion:
-            string = string.replace(k, expansion[k])
-        return string
+    translation = str.maketrans(expansion)
+
     for s in strings:
-        s = expand_string(s, expansion)
+        s = s.translate(translation)
         if not s in string: # Is s substring of string?
             return False
     return True
@@ -82,6 +84,7 @@ def remove_invalid_choices(string, expansions, strings):
         if k not in letters:
             # print(f"Removing {k}", file=sys.stderr)
             del expansions[k]
+
     # If a possible expansion in the expansions is not a substring of string, remove it 
     for l in expansions:
         for s in set(expansions[l]):
@@ -130,7 +133,7 @@ def run_brute_force(string, expansions, strings):
 def print_answer(expansion, expansions):
     for k in expansions.keys():
         if k not in expansion:
-            expansion[k] = random.choice(list(expansions[k]))
+            expansion[k] = expansions[k][0]
     for k,v in expansion.items():
         print(f"{k}:{v}")
 
@@ -138,8 +141,15 @@ def print_no():
     print("NO")
     exit(0)
 
+def handle_invalid_choices(string, expansions, strings):
+    letters = set()
+    for s in strings:
+        letters = letters.union(set([c for c in s if c.isupper()]))
+
+    for l in letters:
+        if l not in expansions.keys():
+            print_no()
 def main():
-    random.seed(42)
     expansions = {}
     string = ""
     strings = set()
@@ -147,13 +157,14 @@ def main():
 
     try:
         string, expansions, strings = read_data()
-        expansions_cpy = dict(expansions)
     except:
         print_no()
 
-    if not can_handle_repeated_letters(string, expansions, strings):
-        print_no()
+    expansions_cpy = {key: value[:] for key, value in expansions.items()}
+
+    handle_invalid_choices(string, expansions, strings)
     remove_invalid_choices(string, expansions, strings)
+
     if expansions:
         answer =  run_brute_force(string, expansions, strings)
     else:
