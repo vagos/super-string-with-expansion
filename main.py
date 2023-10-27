@@ -91,31 +91,6 @@ def remove_invalid_choices(string, expansions, strings):
 
     return True
 
-# Handle the case where one of t_i strings is of the form AAA and there is no XXX in the target string
-def can_handle_repeated_letters(string, expansions, strings):
-    def get_repeated_letter_count(string):
-        c = ''
-        count = 0
-        max_count = 0
-        for i in range(len(string)):
-            if string[i] == c:
-                count += 1
-                max_count = max(max_count, count)
-            else:
-                c = string[i]
-                count = 1
-        return max_count
-
-    n_repeated_letters_string = get_repeated_letter_count(string)
-
-    for s in strings:
-        n_repeated_letters_s = get_repeated_letter_count(s)
-        if n_repeated_letters_s == 0: continue
-        if n_repeated_letters_s > n_repeated_letters_string:
-            return False
-    return True
-        
-
 def run_brute_force(string, expansions, strings):
 
     def is_expansion_valid(string, strings, expansion):
