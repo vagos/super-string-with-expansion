@@ -7,9 +7,8 @@ from collections import defaultdict
 
 # Getting data from stdin
 class Parser:
-    def __init__(self, file=None):
+    def __init__(self):
         self.cursor = self.parse()
-        self.file = file
     def get_word(self):
         return next(self.cursor, None)
     def get_number(self):
@@ -17,80 +16,80 @@ class Parser:
         if n is None: return None
         return int(n)
     def parse(self):
-
-        if self.file:
-            with open(self.file) as file:
-                lines = file.readlines()
-                for line in lines:
-                    data = list(line.split(' '))
-                    for number in data:
-                        if len(number) > 0:
-                            yield(number)   
-        else:
-            for line in sys.stdin:
-                data = [s.strip() for s in line.split(' ')]
-                for number in data:
-                    yield(number)   
+        lines = sys.stdin.readlines()
+        for line in lines:
+            data = [s.strip() for s in line.split(' ')]
+            for number in data:
+                yield(number)   
 
 def read_data():
-    file = None
-    if len(sys.argv) > 1:
-        file = sys.argv[1]
-    parser = Parser(file)
+    Sigma = "abcedfghijklmnopqrstuvwxyz"
+    Gamma = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+
+    parser = Parser()
     expansions = {}
     strings = set()
-    n = parser.get_number()
+    k  = parser.get_number()
     string = parser.get_word()
 
-    if n < 0: raise Exception("Invalid input")
+    if k  < 0: raise Exception("Invalid input")
 
-    for i in range(n):
+    for i in range(k):
         s = parser.get_word()
-        # Invalid n value.
+        # Invalid k  value.
         # We parsed some of the subsets before the strings were done.
         if ':' in s: raise Exception("Invalid input")
         strings.add(s)
+
     while True:
         s = parser.get_word()
-        if s is None: break # Reached EOF
+        # Reached EOF
+        if s is None: break 
 
         l, rest = s.split(':')
-        if l == '': raise Exception("Invalid input")
+        # Invalid letter assigned to subset R_j
+        if l not in Gamma or l == '': 
+            raise Exception("Invalid input")
 
-        rest = rest.split(',')
-        if l in expansions:
+        R = rest.split(',')
+        # r_j repeated
+        if l in expansions: raise Exception("Invalid input")
+        # R_j multiset
+        if len(set(R)) != len(R):
             raise Exception("Invalid input")
-        if len(set(rest)) != len(rest):
-            raise Exception("Invalid input")
-        expansions[l] = rest
+        expansions[l] = R
 
     return string, expansions, strings
 
-def is_expansion_valid(string, strings, expansion):
-    translation = str.maketrans(expansion)
-
-    for s in strings:
-        s = s.translate(translation)
-        if not s in string: # Is s substring of string?
-            return False
-    return True
-
 def remove_invalid_choices(string, expansions, strings):
-    # Remove expansion of keys that do not appear into the target
+    # Remove expansion of keys that do not appear into the target string (s)
     letters = set()
     for s in strings:
         letters = letters.union(set(s))
     for k in set(expansions.keys()):
         if k not in letters:
-            # print(f"Removing {k}", file=sys.stderr)
             del expansions[k]
 
-    # If a possible expansion in the expansions is not a substring of string, remove it 
+    # If a possible expansion is not a substring of string (s), remove it 
     for l in expansions:
         for s in set(expansions[l]):
             if s not in string:
-                # print(f"Removing {s} from {l}", file=sys.stderr)
                 expansions[l].remove(s)
+    
+    for e in expansions:
+        if len(expansions[e]) == 0:
+            del expansions[e]
+
+    # If one of strings contains a letter to which no expansion is assigned, problem is unsolvable
+    letters = set()
+    for s in strings:
+        letters = letters.union(set([c for c in s if c.isupper()]))
+
+    for l in letters:
+        if l not in expansions.keys():
+            return False
+
+    return True
 
 # Handle the case where one of t_i strings is of the form AAA and there is no XXX in the target string
 def can_handle_repeated_letters(string, expansions, strings):
@@ -108,30 +107,39 @@ def can_handle_repeated_letters(string, expansions, strings):
         return max_count
 
     n_repeated_letters_string = get_repeated_letter_count(string)
-    # print(f"n_repeated_letters_string = {n_repeated_letters_string}", file=sys.stderr)
-
 
     for s in strings:
         n_repeated_letters_s = get_repeated_letter_count(s)
         if n_repeated_letters_s == 0: continue
-        # print(f"s = {s}, n_repeated_letters_s = {n_repeated_letters_s}", file=sys.stderr)
         if n_repeated_letters_s > n_repeated_letters_string:
             return False
     return True
         
 
 def run_brute_force(string, expansions, strings):
+
+    def is_expansion_valid(string, strings, expansion):
+        translation = str.maketrans(expansion)
+
+        for s in strings:
+            s = s.translate(translation)
+            if not s in string: # Is s substring of string?
+                return False
+        return True
+
     keys, values = zip(*expansions.items())
     for v in itertools.product(*values):
+        # Iterate over all possible assignment of expansion to letters in Gamma
         expansion = dict(zip(keys, v))
-        # print(f"Trying {expansion}", file=sys.stderr)
         
+        # If the assignement makes it so all string t_i are substrings of string s, we found a solution
         if is_expansion_valid(string, strings, expansion):
             return expansion
     return None
 
 def print_answer(expansion, expansions):
     for k in expansions.keys():
+        # If a letter in Gamma didn't appear in any of the t_i strings, assign it to the first possible expansion
         if k not in expansion:
             expansion[k] = expansions[k][0]
     for k,v in expansion.items():
@@ -141,18 +149,10 @@ def print_no():
     print("NO")
     exit(0)
 
-def handle_invalid_choices(string, expansions, strings):
-    letters = set()
-    for s in strings:
-        letters = letters.union(set([c for c in s if c.isupper()]))
-
-    for l in letters:
-        if l not in expansions.keys():
-            print_no()
 def main():
-    expansions = {}
-    string = ""
-    strings = set()
+    expansions = {} # Dictionary that maps letters in Gamma to subset R_j
+    string = ""     # Target string s
+    strings = set() # Set of strings t_i
     expansions_cpy = {}
 
     try:
@@ -162,10 +162,9 @@ def main():
 
     expansions_cpy = {key: value[:] for key, value in expansions.items()}
 
-    handle_invalid_choices(string, expansions, strings)
-    remove_invalid_choices(string, expansions, strings)
+    solvable = remove_invalid_choices(string, expansions, strings)
 
-    if expansions:
+    if expansions and solvable:
         answer =  run_brute_force(string, expansions, strings)
     else:
         answer = None
